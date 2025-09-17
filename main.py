@@ -11,7 +11,9 @@ from starlette.middleware.sessions import SessionMiddleware
 # --- Configuration ---
 client_id = os.getenv('EWELINK_APP_ID', 'V7pwdsy9Cy66SxXY9gwrxPuiQW4tu5w2')
 client_secret = os.getenv('EWELINK_APP_SECRET', 'MbzyC3kUIdgeQiXTgx8aahNqzquJ8Dfs')
-redirect_uri = 'http://localhost:5000/callback'
+# --- MODIFIED LINE ---
+redirect_uri = 'http://localhost:8000/callback' # Changed port to 8000
+# --- END MODIFICATION ---
 react_app_url = 'http://localhost:3000'
 authorization_base_url = 'https://app-api.coolkit.cn/oauth/authorize'
 token_url = 'https://app-api.coolkit.cn/oauth/token'
@@ -174,6 +176,5 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(access_token)
         print(f"WebSocket disconnected for token: ...{access_token[-5:]}")
 
-# To run: uvicorn main:app --host 0.0.0.0 --port 5000 --reload
-
+# To run: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
