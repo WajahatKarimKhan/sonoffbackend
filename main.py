@@ -11,14 +11,18 @@ from starlette.middleware.sessions import SessionMiddleware
 # --- Configuration ---
 client_id = os.getenv('EWELINK_APP_ID', 'V7pwdsy9Cy66SxXY9gwrxPuiQW4tu5w2')
 client_secret = os.getenv('EWELINK_APP_SECRET', 'MbzyC3kUIdgeQiXTgx8aahNqzquJ8Dfs')
-# --- MODIFIED LINE ---
-redirect_uri = 'http://localhost:8000/callback' # Changed port to 8000
+
+# --- MODIFIED LINES ---
+# This MUST match the URL in your eWeLink dashboard exactly.
+redirect_uri = 'https://aedesign-sonoff-backend.onrender.com/callback'
+
+# This is where your backend will send the user after login is complete.
+react_app_url = 'https://aedesign-sonoffs-app.onrender.com'
 # --- END MODIFICATION ---
-react_app_url = 'http://localhost:3000'
+
 authorization_base_url = 'https://app-api.coolkit.cn/oauth/authorize'
 token_url = 'https://app-api.coolkit.cn/oauth/token'
 api_base_url = 'https://app-api.coolkit.cn/v2'
-
 
 # --- WebSocket Connection Manager ---
 class ConnectionManager:
