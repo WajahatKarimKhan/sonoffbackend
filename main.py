@@ -9,24 +9,22 @@ import asyncio
 from fastapi import WebSocket, WebSocketDisconnect
 
 # --- Configuration ---
-# It's best practice to load these from environment variables
 client_id = os.getenv('EWELINK_APP_ID', 'V7pwdsy9Cy66SxXY9gwrxPuiQW4tu5w2')
 client_secret = os.getenv('EWELINK_APP_SECRET', 'MbzyC3kUIdgeQiXTgx8aahNqzquJ8Dfs')
 
-# Your live backend's callback URL
 redirect_uri = 'https://aedesign-sonoff-backend.onrender.com/callback'
-# Your live frontend's URL
 react_app_url = 'https://aedesign-sonoffs-app.onrender.com'
 
-# --- NEW CHANGE: Forcing all API endpoints to the Asia region ---
-asia_api_base = 'https://as-apia.coolkit.cc'
-authorization_base_url = f'{asia_api_base}/oauth/authorize'
-token_url = f'{asia_api_base}/oauth/token'
+# --- CORRECTED CHANGE: Using global endpoints for authentication ---
+# These are the documented, official URLs for the OAuth process
+authorization_base_url = 'https://app-api.coolkit.cn/oauth/authorize'
+token_url = 'https://app-api.coolkit.cn/oauth/token'
+# --- END CORRECTION ---
+
 
 app = FastAPI()
 
 # --- Middleware ---
-# CORS Middleware to allow requests from your frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[react_app_url],
@@ -34,9 +32,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Session Middleware to handle user sessions
-# A secret key is required to sign the session cookie
 app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(16))
 
 
@@ -90,19 +85,12 @@ def callback(request: Request, code: str, state: str):
         response = requests.post(token_url, json=data)
         response.raise_for_status()
         token_data = response.json()
-
-        # Store the token and the user's region in the session
         request.session['token'] = token_data
-        
-        # --- NEW CHANGE BASED ON DOCUMENTATION ---
-        # Extract and store the user's region from the token response
-        request.session['region'] = token_data.get('region', 'cn') # Default to 'cn' if not present
-        # --- END NEW CHANGE ---
-
+        # We still save the region for later use
+        request.session['region'] = token_data.get('region', 'as') # Default to 'as'
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch token: {e}")
 
-    # Redirect user back to the frontend application
     return RedirectResponse(url=react_app_url)
 
 
@@ -128,25 +116,19 @@ async def get_data_trigger(request: Request):
 
     token = request.session['token']['access_token']
     
-    # --- NEW CHANGE BASED ON DOCUMENTATION ---
-    # Dynamically build the API URL using the stored region
-    region = request.session.get('region', 'cn') # Default to 'cn'
-    api_url = f"https://{region}-api.coolkit.cc:8080/v2/user/device"
-    # --- END NEW CHANGE ---
+    # We use the correct, region-specific URL for data fetching as per the docs
+    region = request.session.get('region', 'as') # Default to 'as' if not found
+    api_url = f"https://{region}-apia.coolkit.cc:8080/v2/user/device"
     
     headers = {'Authorization': f'Bearer {token}'}
 
     try:
-        print(f"Fetching data from: {api_url}") # For debugging
+        print(f"Fetching data from: {api_url}")
         response = requests.get(api_url, headers=headers)
-        
-        print(f"eWeLink API Response Status: {response.status_code}") # For debugging
-        print(f"eWeLink API Response Body: {response.text}") # For debugging
-        
+        print(f"eWeLink API Response Status: {response.status_code}")
+        print(f"eWeLink API Response Body: {response.text}")
         response.raise_for_status()
         data = response.json()
-        
-        # Push data to the specific user's WebSocket
         await manager.send_json(data, user_id)
         return {"status": "Data fetch triggered and sent via WebSocket"}
         
@@ -162,15 +144,12 @@ async def get_data_trigger(request: Request):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    # This is a simplified user identification for the WebSocket.
-    # In a real app, you would have a more robust way to associate a user with a WebSocket.
     try:
         session = websocket.scope['session']
         if 'token' not in session:
             await websocket.close(code=1008)
             return
             
-        # A simple unique identifier for the user's session
         user_id = session.get('user_id')
         if not user_id:
             user_id = secrets.token_hex(8)
@@ -179,13 +158,11 @@ async def websocket_endpoint(websocket: WebSocket):
         await manager.connect(websocket, user_id)
         try:
             while True:
-                # Keep the connection alive
                 await websocket.receive_text()
         except WebSocketDisconnect:
             manager.disconnect(user_id)
             print(f"WebSocket disconnected for user {user_id}")
     except KeyError:
-        # This can happen if the session middleware isn't working correctly
         print("WebSocket connection failed: Session not found in scope.")
         await websocket.close(code=1011)
 
