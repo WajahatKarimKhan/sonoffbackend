@@ -18,10 +18,10 @@ redirect_uri = 'https://aedesign-sonoff-backend.onrender.com/callback'
 # Your live frontend's URL
 react_app_url = 'https://aedesign-sonoffs-app.onrender.com'
 
-# eWeLink API Endpoints from Documentation
-authorization_base_url = 'https://app-api.coolkit.cn/oauth/authorize'
-token_url = 'https://app-api.coolkit.cn/oauth/token'
-# The device API base URL will now be constructed dynamically
+# --- NEW CHANGE: Forcing all API endpoints to the Asia region ---
+asia_api_base = 'https://as-apia.coolkit.cc'
+authorization_base_url = f'{asia_api_base}/oauth/authorize'
+token_url = f'{asia_api_base}/oauth/token'
 
 app = FastAPI()
 
