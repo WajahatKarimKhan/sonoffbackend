@@ -2,7 +2,8 @@ import os
 import asyncio
 from fastapi import FastAPI, HTTPException
 from contextlib import asynccontextmanager
-from pyewelink import EWeLink # CORRECTED IMPORT
+from datetime import datetime, timezone
+from pyewelink import EWeLink
 
 # --- State Management ---
 # A simple in-memory dictionary to act as a cache for the sensor data.
@@ -47,12 +48,13 @@ async def fetch_and_cache_data():
                 humidity = device_state.get("currentHumidity")
 
                 if temp is None or humidity is None:
-                     raise Exception("Temperature/Humidity data not found in device state.")
+                        raise Exception("Temperature/Humidity data not found in device state.")
 
                 # Update the cache with the new data
                 cached_data["temperature"] = temp
                 cached_data["humidity"] = humidity
-                cached_data["last_updated"] = asyncio.to_thread(os.times).user
+                # CORRECTED: Use datetime for a proper ISO 8601 timestamp
+                cached_data["last_updated"] = datetime.now(timezone.utc).isoformat()
                 cached_data["error"] = None
                 print(f"Successfully fetched data: Temp={temp}°C, Humid={humidity}%")
 
@@ -88,8 +90,8 @@ async def get_sonoff_data():
         raise HTTPException(status_code=503, detail=cached_data["error"])
     
     if cached_data["last_updated"] is None:
-         # If the first poll hasn't completed yet
-         raise HTTPException(status_code=503, detail="Data is not available yet. Please try again in a moment.")
+        # If the first poll hasn't completed yet
+        raise HTTPException(status_code=503, detail="Data is not available yet. Please try again in a moment.")
 
     return {
         "temperature": cached_data["temperature"],
@@ -100,4 +102,3 @@ async def get_sonoff_data():
 @app.get("/")
 async def root():
     return {"message": "Sonoff Data Fetcher is running. Go to /api/data to see the sensor readings."}
-
